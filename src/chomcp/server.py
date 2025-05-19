@@ -8,16 +8,17 @@ from chonkie import (  #type: ignore
     SDPMChunker,
     NeuralChunker,
     SlumberChunker, 
+    LateChunker,
 )
-from typing import List, Optional, Literal, Union
-import typer
+from typing import List, Optional, Literal, Union, Dict, Any
 import logging
+import sys
+import traceback
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-app = typer.Typer()
-mcp = FastMCP("Chonkie")
+mcp = FastMCP(name="Chonkie", instructions="A server for Chonkie text chunking tools.", port=8003)
 
 # Everyone starts somewhere and Chonkie is no different. We 
 # have humble beginnings, where we start with a simple tool
@@ -25,7 +26,7 @@ mcp = FastMCP("Chonkie")
 # This is a good starting point for Chonkie and will be 
 # improved upon in the future.
 @mcp.tool()
-def token_chunker(text: str,
+async def token_chunker(text: str,
                   tokenizer: str = "gpt2",
                   chunk_size: int = 512,
                   chunk_overlap: int = 0) -> List[str]:
@@ -50,7 +51,7 @@ def token_chunker(text: str,
 # Okay, that's a good start. Now we can include all the other chunking methods
 # that Chonkie supports.
 @mcp.tool()
-def sentence_chunker(text: str,
+async def sentence_chunker(text: str,
                      tokenizer: str = "gpt2",
                      chunk_size: int = 512,
                      min_sentences_per_chunk: int = 1,
@@ -82,12 +83,13 @@ def sentence_chunker(text: str,
                               delim=delim, 
                               include_delim=include_delim,
                               return_type="texts")
-    return chunker(text)
+    chunks = chunker(text)
+    return chunks
 
 # We can also include the recursive chunker. This is a good way to chunk the text
 # into smaller chunks.
 @mcp.tool()
-def recursive_chunker(text: str,
+async def recursive_chunker(text: str,
                       recipe: str = "default", 
                       lang: str = "en",
                       tokenizer: str = "gpt2",
@@ -117,12 +119,13 @@ def recursive_chunker(text: str,
         List[str]: The text split into smaller chunks.
     """
     chunker = RecursiveChunker.from_recipe(name=recipe, lang=lang, tokenizer_or_token_counter=tokenizer, chunk_size=chunk_size, min_characters_per_chunk=min_characters_per_chunk, return_type="texts")
-    return chunker(text)
+    chunks = chunker(text)
+    return chunks
 
 # We can also include the code chunker. This is a good way to chunk the text
 # into smaller chunks.
 @mcp.tool()
-def code_chunker(text: str,
+async def code_chunker(text: str,
                  tokenizer: str = "gpt2",
                  chunk_size: int = 512, 
                  language: str = "auto") -> List[str]:   
@@ -143,12 +146,13 @@ def code_chunker(text: str,
                           chunk_size=chunk_size, 
                           language=language,
                           return_type="texts")
-    return chunker(text)
+    chunks = chunker(text)
+    return chunks
 
 # We can also include the semantic chunker. This is a good way to chunk the text
 # into smaller chunks.
 @mcp.tool()
-def semantic_chunker(text: str,
+async def semantic_chunker(text: str,
                      embedding_model: str = "minishlab/potion-base-8M",
                      mode: str = "window",
                      threshold: Union[str, float, int] = "auto",
@@ -160,8 +164,7 @@ def semantic_chunker(text: str,
                      threshold_step: float = 0.01, 
                      delim: List[str] = [". ", "? ", "! ", "\n"],
                      include_delim: Optional[Literal["prev", "next"]] = "prev",
-                     tokenizer: str = "gpt2",
-                     **kwargs) -> List[str]:   
+                     tokenizer: str = "gpt2") -> List[str]:   
     """Chunk the text based on the semantic similarity of the sentences. 
 
     SemanticChunker uses true semantics to chunk the text into smaller chunks. Using a embedding model, it gets the vector embeddings of each of the sentences and compares the cosine similarity of the current sentence with the past few sentences to decide if it group them together or not. If the similarity distance is greater than the threshold, it will group them together.
@@ -185,7 +188,7 @@ def semantic_chunker(text: str,
         threshold_step (float): The step size to use for the threshold. Defaults to 0.01.
         delim (List[str]): The delimiters to use for the chunking. Defaults to [". ", "? ", "! ", "\n"].
         include_delim (Optional[Literal["prev", "next"]]): Whether to include the delimiters in the chunks. Defaults to "prev".
-        **kwargs: Additional keyword arguments that need to be passed into the embedding model that is initialized in the SemanticChunker. 
+        tokenizer (str): The tokenizer to use for this. Loads the "gpt2" tokenizer by default.
 
     Returns:
         List[str]: The text split into smaller chunks.
@@ -201,14 +204,14 @@ def semantic_chunker(text: str,
                               threshold_step=threshold_step,
                               delim=delim,
                               include_delim=include_delim,
-                              return_type="texts", 
-                              **kwargs)
-    return chunker(text)
+                              return_type="texts")
+    chunks = chunker(text)
+    return chunks
 
 # We can also include the SDPM chunker. This is a good way to chunk the text        
 # into smaller chunks.
 @mcp.tool()
-def sdpm_chunker(text: str,
+async def sdpm_chunker(text: str,
                 tokenizer: str = "gpt2",
                 chunk_size: int = 512,
                 skip_window: int = 2) -> List[str]:   
@@ -235,15 +238,36 @@ def sdpm_chunker(text: str,
         List[str]: The text split into smaller chunks.
     """
     chunker = SDPMChunker(tokenizer_or_token_counter=tokenizer, 
-                          chunk_size=chunk_size, 
+                          chunk_size=chunk_size,
                           skip_window=skip_window,
                           return_type="texts")
-    return chunker(text)
+    chunks = chunker(text)
+    return chunks
+
+# We can use the Late Chunker to chunk the text into smaller chunks.
+@mcp.tool()
+async def late_chunker(text: str,
+                      embedding_model: str = "sentence-transformers/all-minilm-l6-v2",
+                      chunk_size: int = 512) -> List[str]:
+    """Chunk the text using the LateChunking method. 
+
+    LateChunking is a method that gets the embeddings of the entire text (or as much as possible) and then uses a recursive method to chunk the text into smaller chunks. This way the embedding due to the action of the attention mechanism gets a full context. 
+
+    Args:
+        text (str): The text to chunk.
+
+    Returns:
+        List[str]: The text split into smaller chunks.
+    """
+    chunker = LateChunker(embedding_model=embedding_model, chunk_size=chunk_size)
+    chunks = chunker(text)
+    chunks = [chunk.to_dict() for chunk in chunks]
+    return chunks
 
 # We can also include the neural chunker. This is a good way to chunk the text
 # into smaller chunks.
 @mcp.tool()
-def neural_chunker(text: str) -> List[str]:   
+async def neural_chunker(text: str) -> List[str]:   
     """Chunk the text using a Transformer-based Neural Network fine-tuned for chunking.
 
     NeuralChunker uses a Transformer-based Neural Network fine-tuned for chunking. It uses a 
@@ -258,12 +282,13 @@ def neural_chunker(text: str) -> List[str]:
 
     """
     chunker = NeuralChunker(return_type="texts")
-    return chunker(text)
+    chunks = chunker(text)
+    return chunks
 
 # We can also include the slumber chunker. This is a good way to chunk the text
 # into smaller chunks.
 @mcp.tool()
-def slumber_chunker(text: str) -> List[str]:   
+async  def slumber_chunker(text: str) -> List[str]:   
     """Chunk the text using an LLM that uses the Slumber method to get the ideal split points.
 
     SlumberChunker uses an LLM that uses the Slumber method to get the ideal split points. It leverages
@@ -279,21 +304,33 @@ def slumber_chunker(text: str) -> List[str]:
         List[str]: The text split into smaller chunks.
     """
     chunker = SlumberChunker(return_type="texts")
-    return chunker(text)   
+    chunks = chunker(text)
+    return chunks
 
 
 # This would be run when the user runs `chonkie-mcp` from the command line.
 # Its the main entry point for the package.
-def main():
-    """Main entry point for the package."""
-    logger.info("Starting Chonkie MCP server...")
-    mcp.run(transport="stdio")
+# def main():
+#     """Main entry point for the package."""
+#     logger.info("Starting Chonkie MCP server...")
+#     mcp.run(transport="stdio")
 
-@app.command()
-def run():
-    """Run the Chonkie MCP server."""
-    typer.run(main)
+# @app.command()
+# def run():
+#     """Run the Chonkie MCP server."""
+#     typer.run(main)
 
 if __name__ == "__main__":
-    # run()
-    main()
+    try:
+        print("Starting Chonkie MCP server...", file=sys.stderr)
+        logger.info("Starting Chonkie MCP server...")
+        print(f"Using Python version: {sys.version}", file=sys.stderr)
+        print(f"Script location: {__file__}", file=sys.stderr)
+
+        # Using stdio for Claude Desktop integration
+        mcp.run(transport="stdio")
+    except Exception as e:
+        error_msg = f"Error starting MCP server: {e}\n{traceback.format_exc()}"
+        print(error_msg, file=sys.stderr)
+        logger.error(error_msg)
+        sys.exit(1)
