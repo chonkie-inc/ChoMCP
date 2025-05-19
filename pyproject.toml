@@ -10,9 +10,10 @@ readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.10"
 dependencies = [
+    "typer", 
     "httpx>=0.28.1",
     "mcp[cli]>=1.2.0",
-    "chonkie>=0.5.0",
+    "chonkie[all]>=0.5.0",
 ]
 keywords = [
     "chunking",
@@ -28,7 +29,7 @@ Documentation = "https://github.com/chonkie-ai/chomcp"
 Source = "https://github.com/chonkie-ai/chomcp"
 
 [project.scripts]
-chomcp = "chomcp:main"
+chomcp = "chomcp:app"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

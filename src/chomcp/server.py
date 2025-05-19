@@ -1,5 +1,5 @@
 from mcp.server.fastmcp import FastMCP
-from chonkie import (
+from chonkie import (  #type: ignore
     TokenChunker, 
     SentenceChunker, 
     RecursiveChunker,
@@ -10,6 +10,13 @@ from chonkie import (
     SlumberChunker, 
 )
 from typing import List, Optional, Literal, Union
+import typer
+import logging
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+app = typer.Typer()
 mcp = FastMCP("Chonkie")
 
 # Everyone starts somewhere and Chonkie is no different. We 
@@ -36,8 +43,9 @@ def token_chunker(text: str,
     chunker = TokenChunker(tokenizer=tokenizer,
                            chunk_size=chunk_size, 
                            chunk_overlap=chunk_overlap, 
-                           return_type="text")
-    return chunker(text)
+                           return_type="texts")
+    chunks =  chunker(text)
+    return chunks
 
 # Okay, that's a good start. Now we can include all the other chunking methods
 # that Chonkie supports.
@@ -73,7 +81,7 @@ def sentence_chunker(text: str,
                               min_characters_per_sentence=min_characters_per_sentence,
                               delim=delim, 
                               include_delim=include_delim,
-                              return_type="text")
+                              return_type="texts")
     return chunker(text)
 
 # We can also include the recursive chunker. This is a good way to chunk the text
@@ -108,7 +116,7 @@ def recursive_chunker(text: str,
     Returns:
         List[str]: The text split into smaller chunks.
     """
-    chunker = RecursiveChunker.from_recipe(name=recipe, lang=lang, tokenizer_or_token_counter=tokenizer, chunk_size=chunk_size, min_characters_per_chunk=min_characters_per_chunk, return_type="text")
+    chunker = RecursiveChunker.from_recipe(name=recipe, lang=lang, tokenizer_or_token_counter=tokenizer, chunk_size=chunk_size, min_characters_per_chunk=min_characters_per_chunk, return_type="texts")
     return chunker(text)
 
 # We can also include the code chunker. This is a good way to chunk the text
@@ -134,7 +142,7 @@ def code_chunker(text: str,
     chunker = CodeChunker(tokenizer_or_token_counter=tokenizer, 
                           chunk_size=chunk_size, 
                           language=language,
-                          return_type="text")
+                          return_type="texts")
     return chunker(text)
 
 # We can also include the semantic chunker. This is a good way to chunk the text
@@ -193,7 +201,7 @@ def semantic_chunker(text: str,
                               threshold_step=threshold_step,
                               delim=delim,
                               include_delim=include_delim,
-                              return_type="text", 
+                              return_type="texts", 
                               **kwargs)
     return chunker(text)
 
@@ -229,7 +237,7 @@ def sdpm_chunker(text: str,
     chunker = SDPMChunker(tokenizer_or_token_counter=tokenizer, 
                           chunk_size=chunk_size, 
                           skip_window=skip_window,
-                          return_type="text")
+                          return_type="texts")
     return chunker(text)
 
 # We can also include the neural chunker. This is a good way to chunk the text
@@ -249,7 +257,7 @@ def neural_chunker(text: str) -> List[str]:
         List[str]: The text split into smaller chunks.
 
     """
-    chunker = NeuralChunker(return_type="text")
+    chunker = NeuralChunker(return_type="texts")
     return chunker(text)
 
 # We can also include the slumber chunker. This is a good way to chunk the text
@@ -270,7 +278,7 @@ def slumber_chunker(text: str) -> List[str]:
     Returns:
         List[str]: The text split into smaller chunks.
     """
-    chunker = SlumberChunker(return_type="text")
+    chunker = SlumberChunker(return_type="texts")
     return chunker(text)   
 
 
@@ -278,4 +286,14 @@ def slumber_chunker(text: str) -> List[str]:
 # Its the main entry point for the package.
 def main():
     """Main entry point for the package."""
-    mcp.run()
+    logger.info("Starting Chonkie MCP server...")
+    mcp.run(transport="stdio")
+
+@app.command()
+def run():
+    """Run the Chonkie MCP server."""
+    typer.run(main)
+
+if __name__ == "__main__":
+    # run()
+    main()
