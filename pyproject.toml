@@ -1,25 +1,35 @@
 [build-system]
-requires = [ "hatchling",]
-build-backend = "hatchling.build"
+requires = [ "setuptools>=65", "wheel" ]
+build-backend = "setuptools.build_meta"
 
 [project]
-name = "chonkie-mcp"
+name = "chomcp"
 version = "0.1.0"
 description = "A simple MCP server for simple and efficient chunking via 🦛 Chonkie ✨"
 readme = "README.md"
+license = "Apache-2.0"
 requires-python = ">=3.10"
 dependencies = [
     "httpx>=0.28.1",
     "mcp[cli]>=1.2.0",
     "chonkie>=0.5.0",
 ]
+keywords = [
+    "chunking",
+    "mcp",
+    "chonkie",
+    "ai",
+    "natural language processing"
+]
+
 
 [project.urls]
-Documentation = "https://github.com/chonkie-ai/chonkie-mcp"
-Source = "https://github.com/chonkie-ai/chonkie-mcp"
+Documentation = "https://github.com/chonkie-ai/chomcp"
+Source = "https://github.com/chonkie-ai/chomcp"
 
 [project.scripts]
-chonkie-mcp = "chonkie_mcp:main"
+chomcp = "chomcp:main"
 
-[tool.hatch.build.targets.wheel]
-packages = ["src/chonkie_mcp"]
+[tool.setuptools]
+package-dir = {"" = "src"}
+packages = ["chomcp"]
