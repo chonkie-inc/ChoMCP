@@ -4,7 +4,7 @@
 
 # 🦛 ChoMCP 🔌 
 
-_ Plug in the chunking hippo! 🦛 Chunking over an MCP server._
+_Plug in the chunking hippo! 🦛 Chunking over an MCP server_
 
 </div>
 
